@@ -1,7 +1,8 @@
 mod estructuras;
 use estructuras::{Apunte, Materia};
-
 use rusqlite::{Connection, Result};
+use std::fs::File;
+use std::path::Path;
 use std::sync::Mutex;
 use tauri::State;
 
@@ -154,11 +155,9 @@ fn crear_apunte(
     let db_has_materias: usize = db
         .query_row("SELECT COUNT(*) FROM MATERIA", [], |row| row.get(0))
         .unwrap_or(0);
-
     if db_has_materias == 0 {
         return Err("No hay materias registradas!!!".to_string());
     }
-
     let next_id: usize = db
         .query_row(
             "SELECT IFNULL(MAX(CAST(codigo_apunte AS INTEGER)), 0) FROM APUNTE",
@@ -166,7 +165,6 @@ fn crear_apunte(
             |row| row.get(0),
         )
         .unwrap_or(0);
-
     let new_id = if next_id == 0 { 1 } else { next_id + 1 };
     let codigo_apunte = new_id as u32;
 
@@ -175,7 +173,10 @@ fn crear_apunte(
         (&codigo_apunte, &tema, &materia_codigo, &fecha_creacion, &ruta, &ult_modificacion),
     )
     .map_err(|e| format!("Error registrando el apunte: {}", e))?;
-
+    // Debe crear el archivo en la ruta especificada
+    let nombre_archivo = format!("{}.md", tema);
+    let ruta_completa = Path::new(&ruta).join(nombre_archivo);
+    let _ = File::create(&ruta_completa).map_err(|e| format!("Error creando el archivo: {}", e))?;
     Ok("Apunte registrado exitosamente.".to_string())
 }
 

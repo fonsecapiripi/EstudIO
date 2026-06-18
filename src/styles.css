@@ -1,15 +1,19 @@
 :root {
-  --bg-color: #0f172a;
-  --bg-secondary: #1e293b;
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --accent: #3b82f6;
-  --accent-hover: #2563eb;
-  --accent-glow: rgba(59, 130, 246, 0.4);
-  --success: #10b981;
-  --error: #ef4444;
-  --glass-bg: rgba(30, 41, 59, 0.7);
-  --glass-border: rgba(255, 255, 255, 0.1);
+  --bg-color: #f4f1ea; /* Soft paper */
+  --bg-secondary: #e8e4d9;
+  --text-primary: #2c2a29; /* Dark ink */
+  --text-secondary: #6e6862;
+  --accent: #2c4c3b; /* Classic library green */
+  --accent-hover: #1a3326;
+  --accent-glow: rgba(44, 76, 59, 0.2);
+  --success: #3c7a52;
+  --error: #a8423f;
+  --panel-bg: #ffffff; /* Clean paper */
+  --panel-border: #dcd7c8;
+  --shadow-color: rgba(44, 42, 41, 0.08);
+  
+  --font-sans: 'Inter', sans-serif;
+  --font-serif: 'Lora', serif;
 }
 
 * {
@@ -19,20 +23,23 @@
 }
 
 body {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
   background-color: var(--bg-color);
   color: var(--text-primary);
   height: 100vh;
   overflow: hidden;
-  background: radial-gradient(circle at top right, #1e1b4b 0%, #0f172a 40%, #020617 100%);
+  /* Subtle paper texture using CSS radial gradients */
+  background-image: 
+    radial-gradient(circle at 100% 0%, #ffffff 0%, transparent 40%),
+    radial-gradient(circle at 0% 100%, #e8e4d9 0%, transparent 60%);
 }
 
 .glass-panel {
-  background: var(--glass-bg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--glass-border);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+  /* Renamed concept but keeping class name to avoid HTML rewrite overhead */
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  box-shadow: 0 4px 12px var(--shadow-color), 0 1px 2px rgba(0,0,0,0.05);
+  border-radius: 8px; /* Slightly less rounded for a paper/card look */
 }
 
 .app-container {
@@ -40,29 +47,37 @@ body {
   height: 100vh;
 }
 
-/* Sidebar */
+/* Sidebar - Styled like a binder spine or leather portfolio */
 .sidebar {
   width: 280px;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   padding: 2rem 1.5rem;
-  border-right: 1px solid var(--glass-border);
+  background-color: #f9f8f4;
+  border-right: 2px solid #d4cebc;
+  box-shadow: 2px 0 10px rgba(0,0,0,0.03);
   z-index: 10;
+  overflow-y: auto;
 }
 
 .logo h2 {
-  font-size: 1.8rem;
+  font-family: var(--font-serif);
+  font-size: 2rem;
   font-weight: 700;
-  background: linear-gradient(to right, #60a5fa, #a78bfa);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--accent);
   margin-bottom: 0.2rem;
+  letter-spacing: -0.5px;
 }
 
 .logo p {
   color: var(--text-secondary);
   font-size: 0.85rem;
+  font-family: var(--font-serif);
+  font-style: italic;
   margin-bottom: 3rem;
+  border-bottom: 1px solid var(--panel-border);
+  padding-bottom: 1rem;
 }
 
 .nav-menu {
@@ -76,27 +91,29 @@ body {
   align-items: center;
   gap: 1rem;
   background: transparent;
-  border: none;
+  border: 1px solid transparent;
   color: var(--text-secondary);
   padding: 0.8rem 1rem;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-family: inherit;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-family: var(--font-sans);
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   text-align: left;
 }
 
 .nav-btn:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(44, 76, 59, 0.05);
   color: var(--text-primary);
+  border-color: rgba(44, 76, 59, 0.1);
 }
 
 .nav-btn.active {
   background: var(--accent);
   color: white;
-  box-shadow: 0 0 15px var(--accent-glow);
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px var(--accent-glow);
 }
 
 /* Main Content */
@@ -105,16 +122,35 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
+}
+
+/* Adds a subtle "binding" shadow between sidebar and main content */
+.main-content::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 10px;
+  background: linear-gradient(to right, rgba(0,0,0,0.05) 0%, transparent 100%);
+  z-index: 5;
+  pointer-events: none;
 }
 
 .topbar {
   padding: 2rem 3rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px dashed var(--panel-border);
+  background-color: rgba(244, 241, 234, 0.8);
+  backdrop-filter: blur(4px);
+  z-index: 4;
 }
 
 .topbar h1 {
-  font-size: 1.5rem;
+  font-family: var(--font-serif);
+  font-size: 1.8rem;
   font-weight: 600;
+  color: var(--text-primary);
 }
 
 .content-area {
@@ -137,9 +173,8 @@ body {
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(5px);
   }
-
   to {
     opacity: 1;
     transform: translateY(0);
@@ -148,15 +183,30 @@ body {
 
 /* Cards & Forms */
 .card {
-  border-radius: 16px;
   padding: 2.5rem;
-  max-width: 600px;
+  max-width: 650px;
+  background: #ffffff;
+  /* Paper stack effect */
+  box-shadow: 
+    0 1px 3px rgba(0,0,0,0.08),
+    0 4px 6px rgba(0,0,0,0.04),
+    0 0 0 1px var(--panel-border);
+  position: relative;
+}
+
+.card > * {
+  position: relative;
+  z-index: 1;
 }
 
 .card h3 {
   margin-bottom: 2rem;
-  font-size: 1.25rem;
+  font-family: var(--font-serif);
+  font-size: 1.4rem;
   color: var(--text-primary);
+  border-bottom: 2px solid var(--accent);
+  display: inline-block;
+  padding-bottom: 0.2rem;
 }
 
 .modern-form {
@@ -181,30 +231,42 @@ body {
 }
 
 .form-group label {
-  font-size: 0.9rem;
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
   color: var(--text-secondary);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 input[type="text"],
 input[type="number"],
 input[type="date"],
 select {
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: white;
+  background: #fdfdfc;
+  border: 1px solid var(--panel-border);
+  border-bottom: 2px solid var(--panel-border); /* Stronger bottom border for "write here" feel */
+  color: var(--text-primary);
   padding: 0.75rem 1rem;
-  border-radius: 8px;
-  font-family: inherit;
+  border-radius: 4px;
+  font-family: var(--font-serif); /* Inputs feel like handwriting/typewriter */
   font-size: 1rem;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   outline: none;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.02);
+}
+
+input::placeholder {
+  color: #a39c93;
+  font-style: italic;
 }
 
 input:focus,
 select:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-glow);
+  border-bottom-color: var(--accent);
+  background: #ffffff;
+  box-shadow: 0 0 0 3px var(--accent-glow);
 }
 
 /* Custom Toggle Checkbox */
@@ -213,13 +275,16 @@ select:focus {
   align-items: center;
   gap: 1rem;
   margin-top: 0.5rem;
+  padding: 0.5rem 0;
+  border-top: 1px dashed var(--panel-border);
+  border-bottom: 1px dashed var(--panel-border);
 }
 
 .toggle {
   position: relative;
   display: inline-block;
-  width: 50px;
-  height: 26px;
+  width: 44px;
+  height: 24px;
 }
 
 .toggle input {
@@ -235,9 +300,10 @@ select:focus {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(255, 255, 255, 0.1);
-  transition: .4s;
-  border-radius: 34px;
+  background-color: #d1cbb8;
+  transition: .3s;
+  border-radius: 24px;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
 }
 
 .slider:before {
@@ -245,11 +311,12 @@ select:focus {
   content: "";
   height: 18px;
   width: 18px;
-  left: 4px;
-  bottom: 4px;
+  left: 3px;
+  bottom: 3px;
   background-color: white;
-  transition: .4s;
+  transition: .3s;
   border-radius: 50%;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.2);
 }
 
 input:checked+.slider {
@@ -257,35 +324,39 @@ input:checked+.slider {
 }
 
 input:checked+.slider:before {
-  transform: translateX(24px);
+  transform: translateX(20px);
 }
 
 /* Primary Button */
 .btn-primary {
   background: var(--accent);
   color: white;
-  border: none;
+  border: 1px solid #1a3326;
   padding: 0.8rem 1.5rem;
-  border-radius: 8px;
-  font-size: 1rem;
+  border-radius: 6px;
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
   font-weight: 600;
+  letter-spacing: 0.5px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   margin-top: 1rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .btn-primary:hover {
   background: var(--accent-hover);
-  box-shadow: 0 0 15px var(--accent-glow);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
 }
 
 .btn-primary:active {
-  transform: translateY(0);
+  transform: translateY(1px);
+  box-shadow: none;
 }
 
 /* Grid Materias */
@@ -297,50 +368,66 @@ input:checked+.slider:before {
 
 .materia-card {
   padding: 1.5rem;
-  border-radius: 12px;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  border-radius: 4px; /* More squared like a card */
+  background: #ffffff;
+  border: 1px solid var(--panel-border);
+  border-top: 4px solid var(--accent); /* Color coding top */
+  box-shadow: 0 2px 5px var(--shadow-color);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.8rem;
+  position: relative;
+  /* Add subtle background lines like an index card */
+  background-image: repeating-linear-gradient(transparent, transparent 27px, rgba(44, 76, 59, 0.05) 28px);
+  background-size: 100% 28px;
+  background-position: 0 10px;
 }
 
 .materia-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-3px) rotate(0.5deg);
+  box-shadow: 0 8px 15px rgba(0,0,0,0.08);
+  border-color: #c9c3b0;
 }
 
 .materia-card h4 {
-  font-size: 1.2rem;
+  font-family: var(--font-serif);
+  font-size: 1.25rem;
   color: var(--text-primary);
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.2rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: #ffffff; /* Cover the lines behind text */
+  padding: 0 4px;
+  margin-left: -4px;
+  display: inline-block;
+  line-height: 1.2;
 }
 
 .badge {
   display: inline-block;
-  padding: 0.25rem 0.75rem;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--text-secondary);
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 700;
   width: fit-content;
   border: 1px solid transparent;
-  transition: all 0.3s ease;
 }
 
 .badge.anual {
-  background: rgba(16, 185, 129, 0.15);
-  color: #34d399;
-  border: 1px solid rgba(52, 211, 153, 0.3);
-  box-shadow: 0 0 12px rgba(16, 185, 129, 0.15);
+  background: rgba(60, 122, 82, 0.1);
+  color: #2c5a3d;
+  border-color: rgba(60, 122, 82, 0.2);
 }
 
 .badge.cuatrimestral {
-  background: rgba(139, 92, 246, 0.15);
-  color: #a78bfa;
-  border: 1px solid rgba(167, 139, 250, 0.3);
-  box-shadow: 0 0 12px rgba(139, 92, 246, 0.15);
+  background: rgba(168, 66, 63, 0.1);
+  color: #8a3633;
+  border-color: rgba(168, 66, 63, 0.2);
 }
 
 /* Toast System */
@@ -350,28 +437,33 @@ input:checked+.slider:before {
   right: 2rem;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.8rem;
   z-index: 1000;
 }
 
 .toast {
   padding: 1rem 1.5rem;
-  border-radius: 8px;
+  border-radius: 6px;
   color: white;
   font-weight: 500;
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
   display: flex;
   align-items: center;
   gap: 0.8rem;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-  animation: slideIn 0.3s ease forwards;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  animation: slideIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  border: 1px solid rgba(0,0,0,0.1);
 }
 
 .toast.success {
   background-color: var(--success);
+  color: #e8f5e9;
 }
 
 .toast.error {
   background-color: var(--error);
+  color: #ffebee;
 }
 
 @keyframes slideIn {
@@ -379,13 +471,10 @@ input:checked+.slider:before {
     transform: translateX(100%);
     opacity: 0;
   }
-
   to {
     transform: translateX(0);
     opacity: 1;
   }
-}
-
 }
 
 @keyframes slideOut {
@@ -393,32 +482,33 @@ input:checked+.slider:before {
     transform: translateX(0);
     opacity: 1;
   }
-
   to {
-    transform: translateX(100%);
+    transform: translateX(120%);
     opacity: 0;
   }
 }
 
 /* Recent Notes Widget */
 .recent-notes-widget {
-  margin-top: 1rem;
-  padding: 1rem;
-  border-radius: 12px;
-  background: rgba(15, 23, 42, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  margin-top: 1.5rem;
+  padding: 1.2rem;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid var(--panel-border);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.02), 0 1px 2px var(--shadow-color);
   display: flex;
   flex-direction: column;
   gap: 0.8rem;
 }
 
-/* Accent Button */
+/* Accent Button (Ver Apuntes) */
 .btn-accent {
-  background: linear-gradient(135deg, #8b5cf6, #3b82f6);
-  color: white;
-  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px dashed var(--text-secondary);
   padding: 0.6rem 1rem;
-  border-radius: 8px;
+  border-radius: 6px;
+  font-family: var(--font-sans);
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
@@ -426,27 +516,25 @@ input:checked+.slider:before {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   width: 100%;
-  margin-top: 0.2rem;
-  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.2);
+  margin-top: 0.5rem;
 }
 
 .btn-accent:hover {
-  background: linear-gradient(135deg, #7c3aed, #2563eb);
-  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
-  transform: translateY(-2px);
-}
-
-.btn-accent:active {
-  transform: translateY(0);
+  background: rgba(44, 76, 59, 0.05);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .widget-title {
-  font-size: 0.9rem;
+  font-family: var(--font-serif);
+  font-size: 1rem;
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 0.2rem;
+  border-bottom: 1px solid var(--panel-border);
+  padding-bottom: 0.3rem;
 }
 
 .recent-notes-list {
@@ -457,25 +545,30 @@ input:checked+.slider:before {
 }
 
 .recent-note-item {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  padding: 0.6rem 0.8rem;
-  border-radius: 8px;
+  background: transparent;
+  border-left: 2px solid transparent;
+  padding: 0.4rem 0.6rem;
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: 0.1rem;
   transition: all 0.2s ease;
   cursor: pointer;
+  border-bottom: 1px solid #f0eee5;
+}
+
+.recent-note-item:last-child {
+  border-bottom: none;
 }
 
 .recent-note-item:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.1);
-  transform: translateX(3px);
+  background: rgba(44, 76, 59, 0.03);
+  border-left-color: var(--accent);
+  transform: translateX(2px);
 }
 
 .recent-note-tema {
-  font-size: 0.85rem;
+  font-family: var(--font-serif);
+  font-size: 0.9rem;
   font-weight: 500;
   color: var(--text-primary);
   white-space: nowrap;
@@ -484,17 +577,19 @@ input:checked+.slider:before {
 }
 
 .recent-note-fecha {
+  font-family: var(--font-sans);
   font-size: 0.7rem;
   color: var(--text-secondary);
 }
 
 /* Calendar Widget */
 .calendar-widget {
-  margin-top: 0.7rem;
-  padding: 1rem;
-  border-radius: 20px;
-  background: rgba(15, 23, 42, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  margin-top: 1rem;
+  padding: 1.2rem;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid var(--panel-border);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.02), 0 1px 2px var(--shadow-color);
 }
 
 .calendar-header {
@@ -502,36 +597,42 @@ input:checked+.slider:before {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 0.8rem;
-  font-size: 0.9rem;
+  font-family: var(--font-serif);
+  font-size: 0.95rem;
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .icon-btn {
   background: transparent;
-  border: none;
+  border: 1px solid transparent;
   color: var(--text-secondary);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0.2rem;
+  padding: 0.3rem;
   border-radius: 4px;
   transition: all 0.2s;
 }
 
 .icon-btn:hover {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(0,0,0,0.05);
+  border-color: rgba(0,0,0,0.1);
 }
 
 .calendar-days {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   text-align: center;
-  font-size: 0.75rem;
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  font-weight: 600;
   color: var(--text-secondary);
   margin-bottom: 0.5rem;
+  border-bottom: 1px solid var(--panel-border);
+  padding-bottom: 0.3rem;
 }
 
 .calendar-grid {
@@ -545,15 +646,16 @@ input:checked+.slider:before {
   display: flex;
   align-items: center;
   justify-content: center;
+  font-family: var(--font-sans);
   font-size: 0.8rem;
   color: var(--text-secondary);
-  border-radius: 50%;
+  border-radius: 4px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .calendar-date:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(44, 76, 59, 0.08);
   color: var(--text-primary);
 }
 
@@ -565,7 +667,9 @@ input:checked+.slider:before {
   background: var(--accent);
   color: white;
   font-weight: 600;
-  box-shadow: 0 0 10px var(--accent-glow);
+  border-radius: 50%; /* Make today stand out with a circle like marked with a pen */
+  transform: scale(0.9);
+  box-shadow: 0 2px 4px var(--accent-glow);
 }
 
 /* Modal System */
@@ -575,9 +679,8 @@ input:checked+.slider:before {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(2, 6, 23, 0.7);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(45, 42, 38, 0.4);
+  backdrop-filter: blur(2px);
   z-index: 1000;
   display: flex;
   align-items: center;
@@ -593,11 +696,15 @@ input:checked+.slider:before {
 }
 
 .modal-content {
-  transform: scale(0.95) translateY(20px);
-  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transform: scale(0.95) translateY(10px);
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   width: 100%;
   max-width: 550px;
   margin: 1rem;
+  background: #ffffff; /* Clean paper for modal */
+  border: 1px solid var(--panel-border);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  border-radius: 8px;
 }
 
 .modal-overlay.active .modal-content {
@@ -606,11 +713,12 @@ input:checked+.slider:before {
 
 /* Secondary Button */
 .btn-secondary {
-  background: rgba(255, 255, 255, 0.05);
+  background: #f4f1ea;
   color: var(--text-primary);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--panel-border);
   padding: 0.6rem 1rem;
-  border-radius: 8px;
+  border-radius: 6px;
+  font-family: var(--font-sans);
   font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
@@ -618,16 +726,15 @@ input:checked+.slider:before {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   width: 100%;
 }
 
 .btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.3);
-  transform: translateY(-1px);
+  background: #e8e4d9;
+  border-color: #c9c3b0;
 }
 
 .btn-secondary:active {
-  transform: translateY(0);
+  background: #dcd7c8;
 }

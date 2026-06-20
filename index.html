@@ -17,17 +17,10 @@
     <aside class="sidebar glass-panel">
       <div class="logo">
         <h2>EstudIO</h2>
-        <p>Tu gestor de estudio</p>
+        <p>Tu escritorio digitalizado</p>
       </div>
       <nav class="nav-menu">
-        <button class="nav-btn active" data-target="view-nueva-materia">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />
-          </svg>
-          Nueva Materia
-        </button>
-        <button class="nav-btn" data-target="view-materias">
+        <button class="nav-btn active" data-target="view-materias">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect width="7" height="9" x="3" y="3" rx="1" />
@@ -35,7 +28,14 @@
             <rect width="7" height="9" x="14" y="12" rx="1" />
             <rect width="7" height="5" x="3" y="16" rx="1" />
           </svg>
-          Ver Materias
+          Materias
+        </button>
+        <button class="nav-btn" data-target="view-nueva-materia">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />
+          </svg>
+          Nueva Materia
         </button>
         <button class="nav-btn" data-target="view-nuevo-apunte">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
@@ -89,12 +89,12 @@
 
     <main class="main-content">
       <header class="topbar">
-        <h1 id="view-title">Nueva Materia</h1>
+        <h1 id="view-title">Materias</h1>
       </header>
 
       <div class="content-area">
         <!-- View: Nueva Materia -->
-        <section id="view-nueva-materia" class="view active fade-in">
+        <section id="view-nueva-materia" class="view fade-in">
           <div class="card glass-panel">
             <h3>Registrar una Materia</h3>
             <form id="form-materia" class="modern-form">
@@ -135,7 +135,7 @@
         </section>
 
         <!-- View: Ver Materias -->
-        <section id="view-materias" class="view">
+        <section id="view-materias" class="view active fade-in">
           <div class="materias-grid" id="materias-list">
             <!-- Populated dynamically via TS -->
           </div>

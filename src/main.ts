@@ -37,6 +37,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupModal();
   setupEditor();
   cargarUltimosModificados();
+  cargarMaterias();
 });
 
 function setupNavigation() {
@@ -178,7 +179,7 @@ function cerrarEditor() {
   document.getElementById("view-materias")?.classList.add("active");
   
   const titleEl = document.getElementById("view-title");
-  if (titleEl) titleEl.textContent = "Ver Materias";
+  if (titleEl) titleEl.textContent = "Materias";
   
   const navBtns = document.querySelectorAll(".nav-btn");
   navBtns.forEach(b => {
@@ -307,7 +308,17 @@ async function cargarMaterias() {
     materiasCache = await invoke<Materia[]>("mostrar_materias");
 
     if (materiasCache.length === 0) {
-      container.innerHTML = `<div style="text-align:center; padding: 3rem; color:var(--text-secondary); width: 100%; grid-column: 1/-1;">No hay materias registradas.</div>`;
+      container.innerHTML = `
+        <div style="text-align:center; padding: 3rem; color:var(--text-secondary); width: 100%; grid-column: 1/-1;">
+          <p style="margin-bottom: 1.5rem; font-size: 1.1rem;">No tienes materias registradas aún.</p>
+          <button class="btn-primary" onclick="document.querySelector('[data-target=\\'view-nueva-materia\\']')?.click()" style="margin: 0 auto;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14"/><path d="M12 5v14"/>
+            </svg>
+            Cargar Nueva Materia
+          </button>
+        </div>
+      `;
       return;
     }
 

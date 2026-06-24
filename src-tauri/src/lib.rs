@@ -336,7 +336,7 @@ fn mostrar_eventos(
     let db = state.db.lock().unwrap();
     let mut eventos_consulta = db
         .prepare(
-            "SELECT fecha, hora, nombre, descripcion, fecha_recordar FROM EVENTO WHERE fecha || ' ' || COALESCE(hora, '00:00') BETWEEN ?1 AND ?2 ORDER BY fecha, COALESCE(hora, '00:00') LIMIT 25 OFFSET ?3",
+            "SELECT fecha, hora, nombre, descripcion, fecha_recordar FROM EVENTO WHERE fecha || ' ' || COALESCE(hora, '00:00') BETWEEN ?1 AND ?2 ORDER BY fecha, COALESCE(hora, '00:00') LIMIT 5 OFFSET ?3",
         )
         .map_err(|e| format!("No es posible crear el statement: {}", e))?;
     let iterador = eventos_consulta
@@ -391,6 +391,26 @@ fn crear_evento(
     Ok(())
 }
 
+#[tauri::command]
+fn borrar_apunte(
+    codigo_apunte: String,
+    state: State<'_, DbState>,
+    ruta: String,
+) -> Result<(), String> {
+    let codigo_val = codigo_apunte.parse::<u32>().unwrap();
+    let db = state.db.lock().unwrap();
+    // Borramos el apunte de la BDD
+    db.execute(
+        "DELETE FROM APUNTE WHERE codigo_apunte IS ?1",
+        (codigo_val,),
+    )
+    .map_err(|e| format!("Error borrando el apunte: {}", e))?;
+
+    // Borramos el archivo
+    fs::remove_file(ruta).expect("Error borrando el archivo del apunte");
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let db = inicio();
@@ -408,6 +428,7 @@ pub fn run() {
             guardar_apunte,
             crear_evento,
             mostrar_eventos,
+            borrar_apunte,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -339,6 +339,23 @@
     </div>
   </div>
 
+  <!-- Confirm Delete Materia Modal -->
+  <div id="modal-confirm-delete-materia" class="modal-overlay">
+    <div class="modal-content glass-panel card" style="max-width: 400px; text-align: center;">
+      <h3 style="color: var(--error); margin-top: 0;">¡Atención!</h3>
+      <p style="margin: 1rem 0; font-size: 1.1rem;">
+        ¿Estás seguro de que deseas borrar esta materia?
+      </p>
+      <p style="margin-bottom: 2rem; color: var(--text-secondary); font-size: 0.9rem;">
+        Si borras la materia, <strong>se borrarán todos los apuntes</strong> propios de la materia también. Esta acción no se puede deshacer.
+      </p>
+      <div style="display: flex; gap: 1rem; justify-content: center;">
+        <button id="btn-cancel-delete-materia" class="btn-secondary" style="flex: 1;">Cancelar</button>
+        <button id="btn-confirm-delete-materia" class="btn-primary" style="flex: 1; background-color: var(--error); border-color: var(--error);">Sí, Borrar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notification System -->
   <div id="toast-container" class="toast-container"></div>
 </body>

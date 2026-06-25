@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { confirm } from "@tauri-apps/plugin-dialog";
 import { seleccionarRuta } from "./file";
 import ace from "ace-builds";
 import "ace-builds/src-noconflict/mode-markdown";
@@ -38,6 +39,7 @@ let currentCalendarDate = new Date();
 let editorInstancia: any = null;
 let currentEditPath: string = "";
 let currentEditCodigo: number | null = null;
+let materiaToDelete: string | null = null;
 
 // DOM Elements
 document.addEventListener("DOMContentLoaded", () => {
@@ -379,6 +381,41 @@ function setupModal() {
     });
   }
 
+  const modalConfirmDeleteMateria = document.getElementById("modal-confirm-delete-materia");
+  const btnCancelDeleteMateria = document.getElementById("btn-cancel-delete-materia");
+  const btnConfirmDeleteMateria = document.getElementById("btn-confirm-delete-materia");
+
+  if (modalConfirmDeleteMateria && btnCancelDeleteMateria && btnConfirmDeleteMateria) {
+    btnCancelDeleteMateria.addEventListener("click", () => {
+      modalConfirmDeleteMateria.classList.remove("active");
+      materiaToDelete = null;
+    });
+
+    btnConfirmDeleteMateria.addEventListener("click", async () => {
+      if (materiaToDelete) {
+        try {
+          await invoke("borrar_materia", { codigoMateria: materiaToDelete });
+          showToast("Materia borrada exitosamente.", "success");
+          cargarMaterias();
+          cargarUltimosModificados(); // Por si se borraron apuntes recientes
+          cargarSelectorMaterias(); // Actualizar selector
+        } catch (err: any) {
+          showToast(err.toString(), "error");
+        } finally {
+          modalConfirmDeleteMateria.classList.remove("active");
+          materiaToDelete = null;
+        }
+      }
+    });
+
+    modalConfirmDeleteMateria.addEventListener("click", (e) => {
+      if (e.target === modalConfirmDeleteMateria) {
+        modalConfirmDeleteMateria.classList.remove("active");
+        materiaToDelete = null;
+      }
+    });
+  }
+
   formModalApunte?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const tema = (document.getElementById("modal-apu-tema") as HTMLInputElement)
@@ -481,9 +518,14 @@ async function cargarMaterias() {
         </div>
       `;
 
+      const btnGroup = document.createElement("div");
+      btnGroup.style.display = "flex";
+      btnGroup.style.gap = "0.5rem";
+      btnGroup.style.marginTop = "1rem";
+
       const btnAddApunte = document.createElement("button");
       btnAddApunte.className = "btn-secondary";
-      btnAddApunte.style.marginTop = "1rem";
+      btnAddApunte.style.flex = "1";
       btnAddApunte.innerHTML = `
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
         Agregar Apunte
@@ -505,7 +547,27 @@ async function cargarMaterias() {
         }
       };
 
-      card.appendChild(btnAddApunte);
+      const btnBorrarMateria = document.createElement("button");
+      btnBorrarMateria.className = "btn-secondary";
+      btnBorrarMateria.style.padding = "0.4rem";
+      btnBorrarMateria.style.color = "var(--error)";
+      btnBorrarMateria.style.borderColor = "rgba(255, 99, 132, 0.3)";
+      btnBorrarMateria.title = "Borrar Materia";
+      btnBorrarMateria.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+      `;
+
+      btnBorrarMateria.onclick = (e) => {
+        e.stopPropagation();
+        materiaToDelete = mat.codigo.toString();
+        const modalConfirmDelete = document.getElementById("modal-confirm-delete-materia");
+        if (modalConfirmDelete) modalConfirmDelete.classList.add("active");
+      };
+
+      btnGroup.appendChild(btnAddApunte);
+      btnGroup.appendChild(btnBorrarMateria);
+
+      card.appendChild(btnGroup);
 
       // Hacer la tarjeta clickeable para ver apuntes
       card.style.cursor = "pointer";
@@ -589,8 +651,35 @@ async function abrirModalVerApuntes(mat: Materia) {
         await abrirEditor(apunte);
       };
 
+      const btnBorrar = document.createElement("button");
+      btnBorrar.className = "btn-secondary";
+      btnBorrar.style.cssText =
+        "padding: 0.3rem; font-size: 0.8rem; width: fit-content; color: var(--error); border-color: rgba(255, 99, 132, 0.3);";
+      btnBorrar.title = "Borrar Apunte";
+      btnBorrar.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>`;
+      btnBorrar.onclick = async (e) => {
+        e.stopPropagation();
+        const userConfirmed = await confirm(`¿Estás seguro de que deseas borrar el apunte "${apunte.tema}"?`, { title: 'Borrar Apunte', kind: 'warning' });
+        if (userConfirmed) {
+          try {
+            await invoke("borrar_apunte", { codigoApunte: apunte.codigo_apunte.toString(), ruta: apunte.ruta });
+            showToast("Apunte borrado exitosamente.", "success");
+            abrirModalVerApuntes(mat);
+            cargarUltimosModificados();
+          } catch (err: any) {
+            showToast(err.toString(), "error");
+          }
+        }
+      };
+
+      const accionesDiv = document.createElement("div");
+      accionesDiv.style.display = "flex";
+      accionesDiv.style.gap = "0.5rem";
+      accionesDiv.appendChild(btnAbrir);
+      accionesDiv.appendChild(btnBorrar);
+
       rutaDiv.appendChild(rutaSpan);
-      rutaDiv.appendChild(btnAbrir);
+      rutaDiv.appendChild(accionesDiv);
 
       item.appendChild(rutaDiv);
       listaContenedor.appendChild(item);
@@ -621,83 +710,159 @@ function getFormattedDateString(date: Date, endOfDay = false): string {
   return `${y}/${m}/${d} ${time}`;
 }
 
-async function cargarRecordatorios() {
+async function cargarRecordatorios(fechaFiltro?: string) {
   const listaContenedor = document.getElementById("view-recordatorios-lista");
 
   if (!listaContenedor) return;
 
   listaContenedor.innerHTML = `<p style="color:var(--text-secondary); text-align: center; padding: 2rem;">Cargando eventos...</p>`;
 
-  const today = new Date();
+  const renderSection = (title: string, eventos: Evento[]) => {
+    if (eventos.length === 0) return;
 
-  const hInicio = getFormattedDateString(today, false);
-  const hFin = getFormattedDateString(today, true);
+    const secTitle = document.createElement("h4");
+    secTitle.style.cssText = "font-family: var(--font-serif); font-size: 0.95rem; color: var(--accent); margin: 1rem 0 0.5rem 0; border-bottom: 1px solid var(--panel-border); padding-bottom: 0.2rem;";
+    secTitle.textContent = title;
+    listaContenedor.appendChild(secTitle);
 
-  const d1 = new Date(today); d1.setDate(d1.getDate() + 1);
-  const d7 = new Date(today); d7.setDate(d7.getDate() + 7);
-  const pInicio = getFormattedDateString(d1, false);
-  const pFin = getFormattedDateString(d7, true);
+    eventos.forEach((evento) => {
+      const item = document.createElement("div");
+      item.className = "recent-note-item";
+      item.style.cursor = "default";
+      item.style.padding = "0.8rem 0.5rem";
 
-  const d8 = new Date(today); d8.setDate(d8.getDate() + 8);
-  const dLast = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-  const mInicio = getFormattedDateString(d8, false);
-  const mFin = getFormattedDateString(dLast, true);
+      const timeStr = evento.hora ? ` a las ${evento.hora}` : "";
+      const fParts = evento.fecha.split("/");
+      let displayDate = evento.fecha;
+      if (fParts.length === 3) {
+        displayDate = `${fParts[2]}/${fParts[1]}/${fParts[0]}`;
+      }
+
+      item.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span class="recent-note-tema" title="${evento.nombre}" style="font-weight:600; font-size:1rem; color:var(--text-primary);">${evento.nombre}</span>
+          <span class="recent-note-fecha">${displayDate}${timeStr}</span>
+        </div>
+      `;
+
+      if (evento.descripcion) {
+        const descDiv = document.createElement("div");
+        descDiv.style.cssText = "font-size:0.85rem; color:var(--text-secondary); margin-top:0.4rem;";
+        descDiv.textContent = evento.descripcion;
+        item.appendChild(descDiv);
+      }
+
+      const accionesDiv = document.createElement("div");
+      accionesDiv.style.display = "flex";
+      accionesDiv.style.justifyContent = "flex-end";
+      accionesDiv.style.marginTop = "0.5rem";
+
+      const btnBorrar = document.createElement("button");
+      btnBorrar.className = "btn-secondary";
+      btnBorrar.style.cssText =
+        "padding: 0.3rem; font-size: 0.8rem; width: fit-content; color: var(--error); border-color: rgba(255, 99, 132, 0.3);";
+      btnBorrar.title = "Borrar Recordatorio";
+      btnBorrar.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg> Borrar`;
+      btnBorrar.onclick = async (e) => {
+        e.stopPropagation();
+        const userConfirmed = await confirm(`¿Estás seguro de que deseas borrar el recordatorio "${evento.nombre}"?`, { title: 'Borrar Recordatorio', kind: 'warning' });
+        if (userConfirmed) {
+          try {
+            await invoke("borrar_evento", { codigoEvento: evento.codigo_evento.toString() });
+            showToast("Recordatorio borrado exitosamente.", "success");
+            cargarRecordatorios(fechaFiltro);
+            renderCalendar();
+          } catch (err: any) {
+            showToast(err.toString(), "error");
+          }
+        }
+      };
+      accionesDiv.appendChild(btnBorrar);
+      item.appendChild(accionesDiv);
+
+      listaContenedor.appendChild(item);
+    });
+  };
 
   try {
-    const eventosHoy = await fetchEventos(hInicio, hFin);
-    const eventos7dias = await fetchEventos(pInicio, pFin);
+    if (typeof fechaFiltro === "string" && fechaFiltro.trim() !== "") {
+      const fInicio = fechaFiltro + " 00:00";
+      const fFin = fechaFiltro + " 23:59";
+      const eventosDia = await fetchEventos(fInicio, fFin);
+
+      listaContenedor.innerHTML = "";
+
+      const btnClear = document.createElement("button");
+      btnClear.className = "btn-secondary";
+      btnClear.style.cssText = "margin-bottom: 1rem; width: 100%; display: flex; justify-content: center; gap: 0.5rem; align-items: center;";
+      btnClear.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg> Volver a todos los eventos`;
+      btnClear.onclick = () => cargarRecordatorios();
+      listaContenedor.appendChild(btnClear);
+
+      if (eventosDia.length === 0) {
+        const p = document.createElement("p");
+        p.style.cssText = "color:var(--text-secondary); text-align: center; padding: 2rem;";
+        const parts = fechaFiltro.split("/");
+        p.textContent = `No hay eventos programados para el ${parts[2]}/${parts[1]}/${parts[0]}.`;
+        listaContenedor.appendChild(p);
+      } else {
+        const parts = fechaFiltro.split("/");
+        renderSection(`Eventos del ${parts[2]}/${parts[1]}/${parts[0]}`, eventosDia);
+      }
+      return;
+    }
+
+    const today = new Date();
+
+    const hInicio = getFormattedDateString(today, false);
+    const hFin = getFormattedDateString(today, true);
+
+    const d1 = new Date(today); d1.setDate(d1.getDate() + 1);
+    const d7 = new Date(today); d7.setDate(d7.getDate() + 7);
+    const pInicio = getFormattedDateString(d1, false);
+    const pFin = getFormattedDateString(d7, true);
+
+    const d8 = new Date(today); d8.setDate(d8.getDate() + 8);
+    const dLast = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    const mInicio = getFormattedDateString(d8, false);
+    const mFin = getFormattedDateString(dLast, true);
+
+    const todayStr = getFormattedDateString(today, false).split(" ")[0]; // "YYYY/MM/DD"
+
+    let eventosHoy = await fetchEventos(hInicio, hFin);
+    let eventos7dias = await fetchEventos(pInicio, pFin);
 
     let eventosMes: Evento[] = [];
     if (d8.getMonth() === today.getMonth()) {
         eventosMes = await fetchEventos(mInicio, mFin);
     }
 
-    if (eventosHoy.length === 0 && eventos7dias.length === 0 && eventosMes.length === 0) {
+    const recordatoriosProgramados: Evento[] = [];
+    const extract = (eventos: Evento[]) => {
+      return eventos.filter(ev => {
+        if (ev.fecha_recordar && ev.fecha_recordar.startsWith(todayStr)) {
+          // Si ya existe en recordatoriosProgramados, no duplicarlo
+          if (!recordatoriosProgramados.some(r => r.codigo_evento === ev.codigo_evento)) {
+            recordatoriosProgramados.push(ev);
+          }
+          return false; // Remover de la lista original
+        }
+        return true;
+      });
+    };
+
+    eventosHoy = extract(eventosHoy);
+    eventos7dias = extract(eventos7dias);
+    eventosMes = extract(eventosMes);
+
+    if (recordatoriosProgramados.length === 0 && eventosHoy.length === 0 && eventos7dias.length === 0 && eventosMes.length === 0) {
       listaContenedor.innerHTML = `<p style="color:var(--text-secondary); text-align: center; padding: 2rem;">No hay eventos programados.</p>`;
       return;
     }
 
     listaContenedor.innerHTML = "";
 
-    const renderSection = (title: string, eventos: Evento[]) => {
-      if (eventos.length === 0) return;
-
-      const secTitle = document.createElement("h4");
-      secTitle.style.cssText = "font-family: var(--font-serif); font-size: 0.95rem; color: var(--accent); margin: 1rem 0 0.5rem 0; border-bottom: 1px solid var(--panel-border); padding-bottom: 0.2rem;";
-      secTitle.textContent = title;
-      listaContenedor.appendChild(secTitle);
-
-      eventos.forEach((evento) => {
-        const item = document.createElement("div");
-        item.className = "recent-note-item";
-        item.style.cursor = "default";
-        item.style.padding = "0.8rem 0.5rem";
-
-        const timeStr = evento.hora ? ` a las ${evento.hora}` : "";
-        const fParts = evento.fecha.split("/");
-        let displayDate = evento.fecha;
-        if (fParts.length === 3) {
-          displayDate = `${fParts[2]}/${fParts[1]}/${fParts[0]}`;
-        }
-
-        item.innerHTML = `
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <span class="recent-note-tema" title="${evento.nombre}" style="font-weight:600; font-size:1rem; color:var(--text-primary);">${evento.nombre}</span>
-            <span class="recent-note-fecha">${displayDate}${timeStr}</span>
-          </div>
-        `;
-
-        if (evento.descripcion) {
-          const descDiv = document.createElement("div");
-          descDiv.style.cssText = "font-size:0.85rem; color:var(--text-secondary); margin-top:0.4rem;";
-          descDiv.textContent = evento.descripcion;
-          item.appendChild(descDiv);
-        }
-
-        listaContenedor.appendChild(item);
-      });
-    };
-
+    renderSection("Recordatorios programados", recordatoriosProgramados);
     renderSection("Hoy", eventosHoy);
     renderSection("Próximos 7 días", eventos7dias);
     renderSection("En el mes", eventosMes);
@@ -857,6 +1022,35 @@ async function renderCalendar() {
       dot.className = "event-dot";
       dateEl.appendChild(dot);
     }
+    
+    // Add click event to filter recordatorios
+    dateEl.style.cursor = "pointer";
+    dateEl.onclick = () => {
+      // 1. Activate main nav 'Materias'
+      const navBtns = document.querySelectorAll(".nav-btn");
+      navBtns.forEach((b) => b.classList.remove("active"));
+      const btnMaterias = document.querySelector(".nav-btn[data-target='view-materias']");
+      if (btnMaterias) btnMaterias.classList.add("active");
+
+      const titleEl = document.getElementById("view-title");
+      const topbarTabs = document.getElementById("topbar-tabs");
+      if (titleEl) titleEl.style.display = "none";
+      if (topbarTabs) topbarTabs.style.display = "flex";
+
+      // 2. Activate specific tab 'Recordatorios'
+      const topTabs = document.querySelectorAll(".topbar-tab");
+      topTabs.forEach(t => t.classList.remove("active"));
+      const recordatoriosTab = document.querySelector(".topbar-tab[data-tab-target='view-recordatorios']");
+      if (recordatoriosTab) recordatoriosTab.classList.add("active");
+
+      // 3. Activate the view
+      const views = document.querySelectorAll(".view");
+      views.forEach((v) => v.classList.remove("active"));
+      document.getElementById("view-recordatorios")?.classList.add("active");
+
+      // 4. Load the events for the specific day
+      cargarRecordatorios(dateStr);
+    };
 
     datesGrid.appendChild(dateEl);
   }

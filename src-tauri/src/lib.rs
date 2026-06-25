@@ -336,20 +336,20 @@ fn mostrar_eventos(
     let db = state.db.lock().unwrap();
     let mut eventos_consulta = db
         .prepare(
-            "SELECT fecha, hora, nombre, descripcion, fecha_recordar FROM EVENTO WHERE fecha || ' ' || COALESCE(hora, '00:00') BETWEEN ?1 AND ?2 ORDER BY fecha, COALESCE(hora, '00:00') LIMIT 5 OFFSET ?3",
+            "SELECT codigo_evento, fecha, hora, nombre, descripcion, fecha_recordar FROM EVENTO WHERE fecha || ' ' || COALESCE(hora, '00:00') BETWEEN ?1 AND ?2 ORDER BY fecha, COALESCE(hora, '00:00') LIMIT 25 OFFSET ?3",
         )
-        .map_err(|e| format!("No es posible crear el statement: {}", e))?;
+        .map_err(|e| format!("No es posible mostrar eventos: {}", e))?;
     let iterador = eventos_consulta
         .query_map([fecha_inicio, fecha_fin, offset.to_string()], |registro| {
-            let hora: Option<String> = registro.get(1)?;
-            let descripcion: Option<String> = registro.get(3)?;
+            let hora: Option<String> = registro.get(2)?;
+            let descripcion: Option<String> = registro.get(4)?;
 
             Ok(Evento {
-                codigo_evento: 0,
-                fecha: registro.get(0)?,
+                codigo_evento: registro.get(0)?,
+                fecha: registro.get(1)?,
                 hora: hora.unwrap_or_default(),
-                fecha_recordar: "".to_string(),
-                nombre: registro.get(2)?,
+                fecha_recordar: registro.get(5)?,
+                nombre: registro.get(3)?,
                 descripcion: descripcion.unwrap_or_default(),
             })
         })
@@ -390,6 +390,29 @@ fn crear_evento(
     eprintln!("Evento creado!!!");
     Ok(())
 }
+// Funcion interna, por bloqueo de BDD
+fn eliminar_apunte_interno(
+    db: &rusqlite::Connection,
+    codigo_apunte: u32,
+    ruta: &str,
+) -> Result<(), String> {
+    // Borramos el apunte de la BDD
+    db.execute(
+        "DELETE FROM APUNTE WHERE codigo_apunte IS ?1",
+        (codigo_apunte,),
+    )
+    .map_err(|e| format!("Error borrando el apunte {}: {}", codigo_apunte, e))?;
+
+    // Borramos el archivo. Usamos if let para no colapsar la app si el archivo ya no existe.
+    if let Err(e) = fs::remove_file(ruta) {
+        eprintln!(
+            "Advertencia: No se pudo borrar el archivo del apunte {}: {}",
+            codigo_apunte, e
+        );
+    }
+
+    Ok(())
+}
 
 #[tauri::command]
 fn borrar_apunte(
@@ -397,17 +420,61 @@ fn borrar_apunte(
     state: State<'_, DbState>,
     ruta: String,
 ) -> Result<(), String> {
-    let codigo_val = codigo_apunte.parse::<u32>().unwrap();
+    let codigo_val = codigo_apunte.parse::<u32>().map_err(|e| e.to_string())?;
     let db = state.db.lock().unwrap();
-    // Borramos el apunte de la BDD
-    db.execute(
-        "DELETE FROM APUNTE WHERE codigo_apunte IS ?1",
-        (codigo_val,),
-    )
-    .map_err(|e| format!("Error borrando el apunte: {}", e))?;
+    eliminar_apunte_interno(&db, codigo_val, &ruta)
+}
 
-    // Borramos el archivo
-    fs::remove_file(ruta).expect("Error borrando el archivo del apunte");
+#[tauri::command]
+fn borrar_materia(codigo_materia: String, state: State<'_, DbState>) -> Result<(), String> {
+    let codigo_val = codigo_materia.parse::<u32>().unwrap();
+    let db = state.db.lock().unwrap();
+    //Borramos los apuntes asociados a la materia
+    let mut apuntes_a_borrar: Vec<(u32, String)> = Vec::new();
+    {
+        let mut consulta = db
+            .prepare("SELECT codigo_apunte, ruta FROM APUNTE WHERE materia_codigo IS ?1")
+            .map_err(|e| format!("Error borrando los apuntes: {}", e))?;
+
+        let iterador = consulta
+            .query_map([codigo_val], |registro| {
+                let codigo_apunte: u32 = registro.get(0)?;
+                let ruta: String = registro.get(1)?;
+                Ok((codigo_apunte, ruta))
+            })
+            .map_err(|e| format!("Error consultando eventos: {}", e))?;
+
+        for apunte in iterador {
+            if let Ok(apunte) = apunte {
+                apuntes_a_borrar.push(apunte);
+            }
+        }
+    }
+
+    // Borramos los apuntes de la BDD
+    for (codigo, ruta) in apuntes_a_borrar {
+        if let Err(e) = eliminar_apunte_interno(&db, codigo, &ruta) {
+            eprintln!("Error borrando archivos propios de la materia: {}", e);
+        }
+    }
+
+    // Borramos la materia de la BDD
+    db.execute("DELETE FROM MATERIA WHERE codigo IS ?1", (codigo_val,))
+        .map_err(|e| format!("Error borrando la materia: {}", e))?;
+    Ok(())
+}
+
+#[tauri::command]
+fn borrar_evento(codigo_evento: String, state: tauri::State<DbState>) -> Result<(), String> {
+    let codigo_ev_num = codigo_evento
+        .parse::<i32>()
+        .map_err(|e| format!("Error parsing codigo_evento: {}", e))?;
+    let db = state.db.lock().unwrap();
+    db.execute(
+        "DELETE FROM EVENTO WHERE codigo_evento IS ?1",
+        (codigo_ev_num,),
+    )
+    .map_err(|e| format!("Error borrando el evento: {}", e))?;
     Ok(())
 }
 
@@ -429,6 +496,8 @@ pub fn run() {
             crear_evento,
             mostrar_eventos,
             borrar_apunte,
+            borrar_materia,
+            borrar_evento,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

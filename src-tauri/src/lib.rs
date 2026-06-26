@@ -6,7 +6,7 @@ use std::fs;
 use std::fs::File;
 use std::path::Path;
 use std::sync::Mutex;
-use tauri::State;
+use tauri::{Manager, State};
 //Fechas en formato YYYY/MM/DD aca, pero en frontend se usa DD/MM/YYYY
 //
 struct DbState {
@@ -47,8 +47,15 @@ fn calcular_fecha_recordatorio(
 }
 
 // Funciones de manejo de entidades y bdd
-fn inicio() -> Connection {
-    let conexion = Connection::open("../mi_DB.db3").expect("error conectando a sqlite"); //Autoincremental quita logica de valor siguiente
+fn inicio(app: &tauri::App) -> Connection {
+    let dir = app
+        .path()
+        .app_local_data_dir()
+        .expect("Error resolviendo ruta");
+    std::fs::create_dir_all(&dir).expect("Error creando carpeta del SO");
+    let ruta_db = dir.join("mi_DB.db3");
+
+    let conexion = Connection::open(ruta_db).expect("error conectando a sqlite"); //Autoincremental quita logica de valor siguiente
     conexion
         .execute(
             "CREATE TABLE IF NOT EXISTS MATERIA (
@@ -336,20 +343,20 @@ fn mostrar_eventos(
     let db = state.db.lock().unwrap();
     let mut eventos_consulta = db
         .prepare(
-            "SELECT codigo_evento, fecha, hora, nombre, descripcion, fecha_recordar FROM EVENTO WHERE fecha || ' ' || COALESCE(hora, '00:00') BETWEEN ?1 AND ?2 ORDER BY fecha, COALESCE(hora, '00:00') LIMIT 25 OFFSET ?3",
+            "SELECT fecha, hora, nombre, descripcion, fecha_recordar FROM EVENTO WHERE fecha || ' ' || COALESCE(hora, '00:00') BETWEEN ?1 AND ?2 ORDER BY fecha, COALESCE(hora, '00:00') LIMIT 5 OFFSET ?3",
         )
         .map_err(|e| format!("No es posible mostrar eventos: {}", e))?;
     let iterador = eventos_consulta
         .query_map([fecha_inicio, fecha_fin, offset.to_string()], |registro| {
-            let hora: Option<String> = registro.get(2)?;
-            let descripcion: Option<String> = registro.get(4)?;
+            let hora: Option<String> = registro.get(1)?;
+            let descripcion: Option<String> = registro.get(3)?;
 
             Ok(Evento {
-                codigo_evento: registro.get(0)?,
-                fecha: registro.get(1)?,
+                codigo_evento: 0,
+                fecha: registro.get(0)?,
                 hora: hora.unwrap_or_default(),
-                fecha_recordar: registro.get(5)?,
-                nombre: registro.get(3)?,
+                fecha_recordar: "".to_string(),
+                nombre: registro.get(2)?,
                 descripcion: descripcion.unwrap_or_default(),
             })
         })
@@ -480,9 +487,12 @@ fn borrar_evento(codigo_evento: String, state: tauri::State<DbState>) -> Result<
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let db = inicio();
     tauri::Builder::default()
-        .manage(DbState { db: Mutex::new(db) })
+        .setup(|app| {
+            let db = inicio(app);
+            app.manage(DbState { db: Mutex::new(db) });
+            Ok(())
+        })
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![

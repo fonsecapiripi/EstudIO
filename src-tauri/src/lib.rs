@@ -119,7 +119,8 @@ fn crear_materia(
     anual: bool,
     state: State<'_, DbState>,
 ) -> Result<String, String> {
-    if ano < 1 || ano > 5 {
+    if ano < 1 || ano > 6 {
+        // valores compatibles con la mayoria de carreras
         return Err("Año inválido. Debe ser entre 1 y 5.".to_string());
     }
     if cuatrimestre != 1 && cuatrimestre != 2 && cuatrimestre != 0 {

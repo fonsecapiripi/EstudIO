@@ -674,7 +674,7 @@ async function cargarMaterias() {
 
       const cuatrimestreHtml = mat.anual
         ? ""
-        : `<div style="font-size:0.85rem; color:var(--text-secondary)">Cuatrimestre: <strong style="color:white">${mat.cuatrimestre}</strong></div>`;
+        : `<div style="font-size:0.85rem; color:var(--text-secondary)">Cuatrimestre: <strong style="color:var(--text-primary)">${mat.cuatrimestre}</strong></div>`;
 
       card.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:start">
@@ -683,7 +683,7 @@ async function cargarMaterias() {
         </div>
         <h4>${mat.nombre}</h4>
         <div style="display:flex; gap:1rem; margin-top: auto; padding-top: 1rem;">
-          <div style="font-size:0.85rem; color:var(--text-secondary)">Año: <strong style="color:white">${mat.ano}</strong></div>
+          <div style="font-size:0.85rem; color:var(--text-secondary)">Año: <strong style="color:var(--text-primary)">${mat.ano}</strong></div>
           ${cuatrimestreHtml}
         </div>
       `;

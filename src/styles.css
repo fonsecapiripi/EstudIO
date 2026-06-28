@@ -986,7 +986,7 @@ input:checked+.slider:before {
 /* Headless ProseMirror area styling */
 .ProseMirror {
   flex: 1;
-  min-height: 400px;
+  min-height: 0;
   padding: 1.5rem;
   overflow-y: auto;
   outline: none;
@@ -995,6 +995,20 @@ input:checked+.slider:before {
   font-size: 1.05rem;
   line-height: 1.6;
   color: var(--text-primary);
+}
+
+.ProseMirror::-webkit-scrollbar {
+  width: 6px;
+}
+.ProseMirror::-webkit-scrollbar-track {
+  background: transparent;
+}
+.ProseMirror::-webkit-scrollbar-thumb {
+  background-color: var(--panel-border);
+  border-radius: 4px;
+}
+.ProseMirror::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-secondary);
 }
 
 /* ProseMirror typography and list styles */

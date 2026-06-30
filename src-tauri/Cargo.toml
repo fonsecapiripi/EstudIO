@@ -1,6 +1,6 @@
 [package]
 name = "EstudIO"
-version = "0.2.0"
+version = "0.3.0"
 description = "Gestiona materias, los apuntes y recordatorios"
 authors = ["you"]
 edition = "2021"
@@ -18,7 +18,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -26,3 +26,4 @@ crossterm_input = "0.3.2"
 chrono = "0.4"
 rusqlite = { version = "0.29.0", features = ["bundled"] }
 tauri-plugin-dialog = "~2.0.0"
+uuid = { version = "1.18", features = ["v7"] }

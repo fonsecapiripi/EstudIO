@@ -4,9 +4,10 @@ use estructuras::{Apunte, Evento, Materia};
 use rusqlite::{Connection, Result};
 use std::fs;
 use std::fs::OpenOptions;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use tauri::{Manager, State};
+use uuid::Uuid;
 //Fechas en formato YYYY/MM/DD aca, pero en frontend se usa DD/MM/YYYY
 //
 struct DbState {
@@ -490,6 +491,49 @@ fn borrar_evento(codigo_evento: String, state: tauri::State<DbState>) -> Result<
     Ok(())
 }
 
+#[tauri::command]
+fn incorporar_imagenes(ruta_img: String, ruta_apunte: String) -> Result<String, String> {
+    // La ruta de la imagen incluye el nombre de la imagen
+    // La ruta de la del apunte tiene el nombre del apunte -> Quitar nombre apunte
+    // /C:/Usuario/DOCUMENTOS/Facultad/Apuntes/aveas_corpus.md
+    let path_destino = Path::new(&ruta_apunte)
+        .parent()
+        .ok_or_else(|| "No se pudo obtener el directorio destino de la imagen".to_string())?;
+    let mut carpeta_recursos = PathBuf::from(path_destino); // /C:/Usuario/DOCUMENTOS/Facultad/Apuntes/
+    carpeta_recursos.push(".recursos");
+
+    fs::create_dir_all(&carpeta_recursos).map_err(|e| e.to_string())?; //Crea la carpeta
+
+    //Nombre de la imagen
+    let nombre_imagen = Path::new(&ruta_img)
+        .file_name()
+        .ok_or_else(|| "No se pudo extraer el nombre de la imagen".to_string())?;
+
+    // Construir la ruta destino
+    let mut ruta_destino = carpeta_recursos.clone();
+    let uuid_unico = Uuid::now_v7().to_string(); //Para que tenga nombre unico
+    let extension = Path::new(&nombre_imagen)
+        .extension()
+        .map(|ext| ext.to_string_lossy().into_owned())
+        .unwrap_or("png".to_string());
+
+    let nombre_archivo = if extension.is_empty() {
+        uuid_unico
+    } else {
+        format!("{}.{}", uuid_unico, extension)
+    };
+    ruta_destino.push(&nombre_archivo);
+
+    let path_imagen = Path::new(&ruta_img); //Convierto de String a Path
+
+    fs::copy(&path_imagen, &ruta_destino).map_err(|e| e.to_string())?;
+    eprintln!("Imagen movida exitosamente");
+    //Debo recortar la ruta para que sea relativa .recursos/uuid7.formato
+    let ruta_relativa = format!(".recursos/{}", nombre_archivo);
+
+    Ok(ruta_relativa)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -513,6 +557,7 @@ pub fn run() {
             borrar_apunte,
             borrar_materia,
             borrar_evento,
+            incorporar_imagenes,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,6 +1,8 @@
 mod estructuras;
+use base64::Engine;
 use chrono::{Duration, NaiveDateTime};
 use estructuras::{Apunte, Evento, Materia};
+use image::ImageFormat;
 use rusqlite::{Connection, Result};
 use std::fs;
 use std::fs::OpenOptions;
@@ -379,6 +381,44 @@ fn mostrar_eventos(
 }
 
 #[tauri::command]
+fn eventos_hoy(
+    state: State<'_, DbState>,
+    fecha_inicio: String,
+    fecha_fin: String,
+) -> Result<Vec<Evento>, String> {
+    let db = state.db.lock().unwrap();
+    let mut eventos_consulta = db
+        .prepare(
+            "SELECT codigo_evento, fecha, hora, nombre, descripcion, fecha_recordar FROM EVENTO WHERE fecha_recordar || ' ' || COALESCE(hora, '00:00') BETWEEN ?1 AND ?2 ORDER BY fecha_recordar, COALESCE(hora, '00:00')",
+        )
+        .map_err(|e| format!("No es posible mostrar eventos: {}", e))?;
+    let iterador = eventos_consulta
+        .query_map([fecha_inicio, fecha_fin], |registro| {
+            let hora: Option<String> = registro.get(2)?;
+            let descripcion: Option<String> = registro.get(4)?;
+
+            Ok(Evento {
+                codigo_evento: registro.get(0)?,
+                fecha: registro.get(1)?,
+                hora: hora.unwrap_or_default(),
+                fecha_recordar: registro.get(5)?,
+                nombre: registro.get(3)?,
+                descripcion: descripcion.unwrap_or_default(),
+            })
+        })
+        .map_err(|e| format!("Error consultando eventos: {}", e))?;
+
+    let mut result = Vec::new();
+    for evento in iterador {
+        match evento {
+            Ok(e) => result.push(e),
+            Err(e) => eprintln!("Error leyendo evento: {}", e),
+        }
+    }
+    Ok(result)
+}
+
+#[tauri::command]
 fn crear_evento(
     fecha: String,
     hora: String,
@@ -534,6 +574,33 @@ fn incorporar_imagenes(ruta_img: String, ruta_apunte: String) -> Result<String, 
     Ok(ruta_relativa)
 }
 
+#[tauri::command]
+fn paste_imagen(ruta_apunte: String, imagen: String) -> Result<String, String> {
+    eprintln!("Se llama a la funcion de paste");
+    let path_destino = Path::new(&ruta_apunte)
+        .parent()
+        .ok_or_else(|| "No se pudo obtener el directorio destino de la imagen".to_string())?;
+    let mut carpeta_recursos = PathBuf::from(path_destino);
+    carpeta_recursos.push(".recursos"); //Tenemos ruta destino
+    fs::create_dir_all(&carpeta_recursos).map_err(|e| e.to_string())?;
+    // Convertimos la imagen
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(imagen)
+        .map_err(|e| e.to_string())?;
+    let img = image::load_from_memory(&bytes).map_err(|e| e.to_string())?;
+
+    let nombre_archivo = format!("{}.png", Uuid::now_v7());
+    let mut ruta_destino = PathBuf::from(&carpeta_recursos);
+    ruta_destino.push(&nombre_archivo);
+    eprintln!("Previa a guardar la imagen");
+    img.save_with_format(&ruta_destino, ImageFormat::Png)
+        .map_err(|e| e.to_string())?;
+
+    let relativa = format!(".recursos/{}", nombre_archivo);
+    eprintln!("Imagen movida exitosamente a la ruta: {}", relativa);
+    Ok(relativa)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -544,6 +611,7 @@ pub fn run() {
         })
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .invoke_handler(tauri::generate_handler![
             crear_materia,
             mostrar_materias,
@@ -554,10 +622,12 @@ pub fn run() {
             guardar_apunte,
             crear_evento,
             mostrar_eventos,
+            eventos_hoy,
             borrar_apunte,
             borrar_materia,
             borrar_evento,
             incorporar_imagenes,
+            paste_imagen,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

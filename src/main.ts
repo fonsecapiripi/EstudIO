@@ -1,7 +1,10 @@
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { confirm } from "@tauri-apps/plugin-dialog";
+import { readImage, readText } from "@tauri-apps/plugin-clipboard-manager";
 import { seleccionarRuta } from "./file";
-import { Editor } from "@tiptap/core";
+import { Editor, Extension } from "@tiptap/core";
+import { Plugin, PluginKey } from "@tiptap/pm/state";
+
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
 import { Markdown } from "@tiptap/markdown";
@@ -11,6 +14,18 @@ import TurndownService from "turndown";
 
 const turndownService = new TurndownService({ headingStyle: "atx" });
 turndownService.keep(["mark"]);
+
+turndownService.addRule("preserve-image-dims", {
+  filter: (node: any) => {
+    return (
+      node.nodeName === "IMG" &&
+      (node.getAttribute("width") || node.getAttribute("height"))
+    );
+  },
+  replacement: (_content: string, node: any) => {
+    return node.outerHTML;
+  },
+});
 
 // Define Interfaces
 interface Materia {
@@ -47,7 +62,94 @@ let editorInstancia: Editor | null = null;
 let currentEditPath: string = "";
 let currentEditCodigo: number | null = null;
 let materiaToDelete: string | null = null;
-let selectedHighlightColor: string = "#fef08a";
+let selectedHighlightColor = "#fef08a";
+
+const CustomPasteExtension = Extension.create({
+  name: "customPaste",
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: new PluginKey("customPasteHandler"),
+        props: {
+          handlePaste(view, event, _slice) {
+            console.log("CustomPasteExtension: Interceptando evento de pegado");
+            event.preventDefault();
+            event.stopImmediatePropagation();
+
+            (async () => {
+              try {
+                console.log("Intentando leer imagen desde el portapapeles de Tauri...");
+                const clipboardImage = await readImage();
+                
+                const size = await clipboardImage.size();
+                const rgbaBytes = await clipboardImage.rgba();
+                
+                // Convert RGBA bytes to Base64 using a temporary canvas
+                const canvas = document.createElement("canvas");
+                canvas.width = size.width;
+                canvas.height = size.height;
+                const ctx = canvas.getContext("2d");
+                if (!ctx) {
+                  throw new Error("No se pudo obtener el contexto 2D del canvas");
+                }
+                
+                const imgData = ctx.createImageData(size.width, size.height);
+                imgData.data.set(rgbaBytes);
+                ctx.putImageData(imgData, 0, 0);
+                
+                const dataUrl = canvas.toDataURL("image/png");
+                const commaIdx = dataUrl.indexOf(",");
+                if (commaIdx === -1) {
+                  throw new Error("Formato de URL de datos inválido");
+                }
+                const base64Data = dataUrl.substring(commaIdx + 1);
+
+                console.log("Guardando imagen en el backend...");
+                const rutaRelativa = await invoke<string>("paste_imagen", {
+                  rutaApunte: currentEditPath,
+                  imagen: base64Data,
+                });
+
+                const lastSlash = Math.max(
+                  currentEditPath.lastIndexOf("/"),
+                  currentEditPath.lastIndexOf("\\"),
+                );
+                const parentDir =
+                  lastSlash !== -1 ? currentEditPath.substring(0, lastSlash) : "";
+                const absolutePath = parentDir
+                  ? `${parentDir}/${rutaRelativa}`
+                  : rutaRelativa;
+                const assetUrl = convertFileSrc(absolutePath);
+
+                // Insert the image
+                editorInstancia?.chain().focus().setImage({ src: assetUrl }).run();
+                showToast("Imagen pegada correctamente", "success");
+
+                // Close the image resource to free memory
+                await clipboardImage.close();
+              } catch (error: any) {
+                console.log("No se pudo leer una imagen del portapapeles, intentando texto...", error);
+                try {
+                  const text = await readText();
+                  if (text) {
+                    console.log("Texto del portapapeles leído, reinyectando...");
+                    view.dispatch(view.state.tr.insertText(text));
+                  }
+                } catch (textErr) {
+                  console.error("Error al leer texto del portapapeles:", textErr);
+                }
+              }
+            })();
+
+            return true; // Cancel default web paste behavior
+          }
+        }
+      })
+    ];
+  }
+});
+
+
 
 // DOM Elements
 document.addEventListener("DOMContentLoaded", () => {
@@ -372,19 +474,34 @@ function setupEditor() {
               try {
                 const path = await seleccionarRuta(false);
                 if (!path) return;
-                
-                const rutaRelativa = await invoke<string>("incorporar_imagenes", {
-                  rutaImg: path,
-                  rutaApunte: currentEditPath,
-                });
-                
-                const lastSlash = Math.max(currentEditPath.lastIndexOf("/"), currentEditPath.lastIndexOf("\\"));
-                const parentDir = lastSlash !== -1 ? currentEditPath.substring(0, lastSlash) : "";
-                const absolutePath = parentDir ? `${parentDir}/${rutaRelativa}` : rutaRelativa;
-                
+
+                const rutaRelativa = await invoke<string>(
+                  "incorporar_imagenes",
+                  {
+                    rutaImg: path,
+                    rutaApunte: currentEditPath,
+                  },
+                );
+
+                const lastSlash = Math.max(
+                  currentEditPath.lastIndexOf("/"),
+                  currentEditPath.lastIndexOf("\\"),
+                );
+                const parentDir =
+                  lastSlash !== -1
+                    ? currentEditPath.substring(0, lastSlash)
+                    : "";
+                const absolutePath = parentDir
+                  ? `${parentDir}/${rutaRelativa}`
+                  : rutaRelativa;
+
                 const assetUrl = convertFileSrc(absolutePath);
-                
-                editorInstancia.chain().focus().setImage({ src: assetUrl }).run();
+
+                editorInstancia
+                  .chain()
+                  .focus()
+                  .setImage({ src: assetUrl })
+                  .run();
                 showToast("Imagen agregada correctamente", "success");
               } catch (error: any) {
                 console.error("Error al insertar imagen:", error);
@@ -535,7 +652,7 @@ async function guardarApunteActual(): Promise<boolean> {
     return false;
   try {
     const htmlContent = editorInstancia.getHTML();
-    
+
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlContent, "text/html");
     const imgs = doc.querySelectorAll("img");
@@ -549,7 +666,7 @@ async function guardarApunteActual(): Promise<boolean> {
       }
     });
     const finalHtml = doc.body.innerHTML;
-    
+
     const content = turndownService.turndown(finalHtml);
 
     const now = new Date();
@@ -1097,7 +1214,10 @@ async function cargarRecordatorios(fechaFiltro?: string) {
     const mInicio = getFormattedDateString(d8, false);
     const mFin = getFormattedDateString(dLast, true);
 
-    const todayStr = getFormattedDateString(today, false).split(" ")[0]; // "YYYY/MM/DD"
+    const recordatoriosProgramados = await invoke<Evento[]>("eventos_hoy", {
+      fechaInicio: hInicio,
+      fechaFin: hFin,
+    });
 
     let eventosHoy = await fetchEventos(hInicio, hFin);
     let eventos7dias = await fetchEventos(pInicio, pFin);
@@ -1107,27 +1227,17 @@ async function cargarRecordatorios(fechaFiltro?: string) {
       eventosMes = await fetchEventos(mInicio, mFin);
     }
 
-    const recordatoriosProgramados: Evento[] = [];
-    const extract = (eventos: Evento[]) => {
+    const removeRecordatorios = (eventos: Evento[]) => {
       return eventos.filter((ev) => {
-        if (ev.fecha_recordar && ev.fecha_recordar.startsWith(todayStr)) {
-          // Si ya existe en recordatoriosProgramados, no duplicarlo
-          if (
-            !recordatoriosProgramados.some(
-              (r) => r.codigo_evento === ev.codigo_evento,
-            )
-          ) {
-            recordatoriosProgramados.push(ev);
-          }
-          return false; // Remover de la lista original
-        }
-        return true;
+        return !recordatoriosProgramados.some(
+          (r) => r.codigo_evento === ev.codigo_evento,
+        );
       });
     };
 
-    eventosHoy = extract(eventosHoy);
-    eventos7dias = extract(eventos7dias);
-    eventosMes = extract(eventosMes);
+    eventosHoy = removeRecordatorios(eventosHoy);
+    eventos7dias = removeRecordatorios(eventos7dias);
+    eventosMes = removeRecordatorios(eventosMes);
 
     if (
       recordatoriosProgramados.length === 0 &&
@@ -1170,21 +1280,12 @@ async function cargarRecordatoriosHoy() {
 
   try {
     const today = new Date();
-    const y = today.getFullYear();
-    const m = String(today.getMonth() + 1).padStart(2, "0");
-    const d = String(today.getDate()).padStart(2, "0");
-    const todayStr = `${y}/${m}/${d}`;
-
-    const limitDate = new Date(today);
-    limitDate.setDate(limitDate.getDate() + 35);
-
     const fInicio = getFormattedDateString(today, false);
-    const fFin = getFormattedDateString(limitDate, true);
+    const fFin = getFormattedDateString(today, true);
 
-    const eventos = await fetchEventos(fInicio, fFin);
-
-    const recordatoriosHoy = eventos.filter((ev) => {
-      return ev.fecha_recordar && ev.fecha_recordar.startsWith(todayStr);
+    const recordatoriosHoy = await invoke<Evento[]>("eventos_hoy", {
+      fechaInicio: fInicio,
+      fechaFin: fFin,
     });
 
     if (recordatoriosHoy.length === 0) {
@@ -1514,9 +1615,15 @@ async function abrirEditor(apunte: Apunte) {
           editorInstancia = new Editor({
             element: container,
             extensions: [
+              CustomPasteExtension,
               StarterKit,
               Highlight.configure({ multicolor: true }),
-              Image,
+              Image.configure({
+                resize: {
+                  enabled: true,
+                  alwaysPreserveAspectRatio: true,
+                },
+              }),
               Markdown,
             ],
             content: "",
@@ -1534,10 +1641,14 @@ async function abrirEditor(apunte: Apunte) {
     if (editorInstancia) {
       console.log("Seteando valor en el editor...");
       const htmlContent = await marked.parse(content);
-      
-      const lastSlash = Math.max(apunte.ruta.lastIndexOf("/"), apunte.ruta.lastIndexOf("\\"));
-      const parentDir = lastSlash !== -1 ? apunte.ruta.substring(0, lastSlash) : "";
-      
+
+      const lastSlash = Math.max(
+        apunte.ruta.lastIndexOf("/"),
+        apunte.ruta.lastIndexOf("\\"),
+      );
+      const parentDir =
+        lastSlash !== -1 ? apunte.ruta.substring(0, lastSlash) : "";
+
       const parser = new DOMParser();
       const doc = parser.parseFromString(htmlContent, "text/html");
       const imgs = doc.querySelectorAll("img");
@@ -1550,7 +1661,7 @@ async function abrirEditor(apunte: Apunte) {
         }
       });
       const finalHtmlContent = doc.body.innerHTML;
-      
+
       editorInstancia.commands.setContent(finalHtmlContent);
     } else {
       console.error("editorInstancia es null, no se pudo establecer el valor.");
